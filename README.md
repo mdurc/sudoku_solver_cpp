@@ -2,7 +2,9 @@
 cpp version of sudoku solver.
 
 Requires an input file. File name is inputted from console.
+Include total size above the board. (ex. 9)
 formatted like this example sudoku board (spaces between each element with . representing an unknown space):<br>
+9
 5 3 . . 7 . . . .<br>
 6 . . 1 9 5 . . .<br>
 . 9 8 . . . . 6 .<br>

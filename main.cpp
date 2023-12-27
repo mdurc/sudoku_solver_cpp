@@ -1,8 +1,10 @@
 
-#include <array>
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <math.h>
+#include<unistd.h> 
+
 
 //NOTE: THIS INCLUDES OPTIONAL PRINT STATEMENTS WITHIN THE recursion to show the process but also that make solving
 //difficult puzzles take forever. Remove/comment out the statements for an instant solve.
@@ -36,21 +38,46 @@
 class Solution {
 public:
     //Constructor
-    Solution(std::vector<std::vector<char>>& b) {
-
-        solveSudoku(b);
+    bool m_print{};
+    Solution(std::vector<std::vector<std::string>>& b, std::string& fname, bool print) {
+        m_print = print;
 
         //For output visual only:
-        print_board(b);
+        int x{int(sqrt(b.size()))};
+        std::vector<std::vector<std::string>> original{b};
+
+        std::string horiz(b.size()*3 + x + 1, '-');
+        if (x>9){
+            clear();
+            std::cerr<<"Error. File: "<<fname<<" is too big. Max size: 25"<<std::endl;
+        }else{
+            solveSudoku(b, horiz, x, fname);
+            print_board(b, horiz, x);
+            std::cout<<"Original:"<<std::endl;
+            print_board(original,horiz, x);
+            sleep(2);
+        }
     }
 
     //For output visual only:
-    void print_board(const std::vector<std::vector<char>>& board) {
-        for (const std::vector<char>& row : board) {
-            for (char col : row) {
-                std::cout << col << ' ';
+    void print_board(const std::vector<std::vector<std::string>>& board, const std::string &horiz, const int& x) {
+        std::cout<<horiz<<std::endl;
+        for (int r{};r<board.size();r++){
+            for (int c{};c<board.size();c++){
+                if (c%x==0){
+                    std::cout<<"|";
+                }
+                if (board[r][c]=="."){
+                    std::cout<<" . ";
+                }else{
+                    std::cout<<std::setw(2)<<board[r][c]<<" ";
+                }
             }
-            std::cout << '\n';
+            if ((r+1)%x==0){
+                std::cout<<"| \n"<<horiz<<std::endl;
+            }else{
+                std::cout<<"| "<<std::endl;
+            }
         }
     }
 
@@ -60,13 +87,16 @@ public:
         std::cout << "\x1B[2J\x1B[H";
     }
 
-    void solveSudoku(std::vector<std::vector<char>>& board) {
-        std::array<char, 9> vals{'1', '2', '3', '4', '5',
-                                 '6', '7', '8', '9'};
-        bool found_solution{solve(board, vals)};
+    void solveSudoku(std::vector<std::vector<std::string>>& board, const std::string& horiz, const int& x, std::string& fname) {
+        std::vector<std::string> vals(x*x);
+        for (int i = 0; i < x*x; ++i) {
+            vals[i] = std::to_string(i + 1);
+        }
 
         //For output visual only:
+        bool found_solution{solve(board, vals, horiz, x)};
         clear();
+        std::cout<<fname<<std::endl;
         if (found_solution) {
             std::cout << "Solved:" << std::endl;
         } else {
@@ -74,23 +104,25 @@ public:
         }
     }
 
-    bool solve(std::vector<std::vector<char>>& board,
-               const std::array<char, 9>& vals) {
-        for (int r{}; r < 9; r++) {
-            for (int c{}; c < 9; c++) {
+    bool solve(std::vector<std::vector<std::string>>& board,
+               const std::vector<std::string>& vals, const std::string& horiz, const int& x) {
+        for (int r{}; r < (x*x); r++) {
+            for (int c{}; c < (x*x); c++) {
 
                 //For output visual only:
                 // Uncomment to see a progression of the board being solved
                 // recursively
-                //clear();
-                //std::cout << "updating\n";
-                //print_board(board);
+                if (m_print){
+                    clear();
+                    std::cout << "updating\n";
+                    print_board(board, horiz, x);
+                }
 
-                if (board[r][c] == '.') {  // Base case if statment
-                    for (char possible : vals) {
-                        if (is_valid_move(r, c, possible, board)) {
+                if (board[r][c] == ".") {  // Base case if statment
+                    for (std::string possible : vals) {
+                        if (is_valid_move(r, c, possible, board, x)) {
                             board[r][c] = possible;
-                            if (solve(board, vals)) {
+                            if (solve(board, vals, horiz, x)) {
                                 return true;
                             }
                             // When solve returns false the board should reset the
@@ -120,21 +152,21 @@ public:
         return true;
     }
 
-    bool is_valid_move(int r, int c, char num,
-                       const std::vector<std::vector<char>>& board) {
+    bool is_valid_move(int r, int c, std::string num,
+                       const std::vector<std::vector<std::string>>& board, const int& x) {
 
         //check row and column
-        for (int i = 0; i < 9; ++i) {
+        for (int i = 0; i < (x*x); ++i) {
             if (board[r][i] == num || board[i][c] == num) {
                 return false;
             }
         }
 
         //check 3x3
-        int sr{(r / 3) * 3};
-        int sc{(c / 3) * 3};
-        for (int nr{sr}; nr < sr + 3; nr++) {
-            for (int nc{sc}; nc < sc + 3; nc++) {
+        int sr{(r / x) * x};
+        int sc{(c / x) * x};
+        for (int nr{sr}; nr < sr + x; nr++) {
+            for (int nc{sc}; nc < sc + x; nc++) {
                 if (board[nr][nc] == num) {
                     return false;
                 }
@@ -147,30 +179,45 @@ public:
 
 int main() {
 
-    std::string fname{};
-    std::cout << "File name: ";
-    std::cin >> fname;
-    std::ifstream input_file{fname};
+    std::vector<std::string> files {"tiny.txt","easy1.txt", "easy2.txt", "medium.txt", "mid.txt",  "hard.txt", "extreme.txt", "huge.txt"};
+    //std::vector<std::string> files {"huge.txt"};
 
-    if (!input_file.good()) {
-        std::cerr << "Error accessing file: " << fname << std::endl;
-        return 1;
-    }
-
-    std::vector<std::vector<char>> input_board{};
-    std::vector<char> row{};
     int count{};
-    while (input_file) {
-        char next_val{};
-        input_file >> next_val;
-        row.push_back(next_val);
-        count++;
-        if (count % 9 == 0) {
-            input_board.push_back(row);
-            row.clear();
-        }
-    }
+    int board_length{};
+    std::vector<std::vector<std::string>> input_board{};
+    std::vector<std::string> row{};
+    std::string next_val{};
+    for (std::string fname : files){
+        std::ifstream input_file{"tests/"+fname};
 
-    Solution board_one{input_board};
+        if (!input_file.good()) {
+            std::cerr << "Error accessing file: " << fname << std::endl;
+            return 1;
+        }
+        std::cout<<"\n"<<fname<<":\n";
+
+        input_file>>board_length;
+        while (input_file) {
+            input_file >> next_val;
+            row.push_back(next_val);
+            count++;
+            if (count % board_length == 0) {
+                input_board.push_back(row);
+                row.clear();
+            }
+        }
+        if (fname=="extreme.txt" ){
+            // extreme.txt takes too long if you want to show the recursion.
+            Solution board_one{input_board, fname, false};
+            board_one.clear();
+        }else{
+            Solution board_one{input_board, fname, true};
+            board_one.clear();
+        }
+
+        row.clear();
+        input_board.clear();
+        count=0;
+    }
     return 0;
 }
